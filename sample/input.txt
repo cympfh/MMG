@@ -1,0 +1,48 @@
+A different method is used to detect and to analysis emoticons and that has been developed by Michal Ptaszynski
+Analysis of 1-line Eastern emoticons are researched by Ptaszynski et al. and they publishes emoticons analysis system CAO
+And tagging is done with Viterbi algorithm
+And the other parameters for it are voice volume speaking speed and voice pitch
+As easy affect analysis the emotion of text including a keyword in a lexicon is the emotion of the lexicon
+As modern Speech Synthesis tools which uses HTS as TTS engine are able to produce natural speech with their parameters almost continuously
+At first CAO decomposes an emoticon into a triplet: eyes and month then analysis the triplets with its lexicon for eyes and lexicon for month
+CVS in ML-Ask, ver. 4.2 detects 123 structures of negation with regular expression
+CVS is a system which solves this problem
+CVS shits emotions when it detects some grammer structres negation and so on ML-Ask is implemented with CVS
+CeVIO Creative Studio has four voices: normal cheerful anger and sadness and produce speech mixing the four voices at any rate
+Emoticons are often ignored in Sentiment Analysis however they are considered as important labels for sentiment
+For a sentence this annotates with the all sentiment states which the sentence can express
+For example sentiment in a document level may be estimated from the sentiments of the sentences of the document but a negative document can contain a positive document
+For example the parameters for MMD Agent are speaking rate pitch shift in half tone gender parameter and enhancement
+For learning the weights this model uses Margin Infused Relaxed Algorithm MIRA
+Here since ML-Ask annotates multiple states we note the states joining with +
+However the easy analysis fails on some syntax sentence for example negation sentences and intensifier a sentence not a very nice product ... doesn t have a positive emotion
+However they makes corpus from Ameba Blog www.ameblo.co.jp and only the detection part is publised in web
+In a lexicon for an emotion keywords for the emotion are listed up
+In sentiment analysis variant levels of analysis are required Fine-to-Coarse Sentiment Analysis is the sentence analysis in multiple levels
+In this analysis when a document contains only one emoticon the sentiment of the document depends only one the emotion and when a document contains two or more emotions the before sentence of an emoticon depends on the emoticon 84.0% of all emoticons in their corpus are placed at end of the paragraphs
+In this chapter the works about sentiment analysis and affect analysis which our method is based on are produced a model for fine-to-coarse sentiment analysis is introduced
+In this paper we call null when no emotions are extracted from text
+ML-Ask annotates with no states when no emotions are extracted
+McDonald s model learns a structure for the estimation The model considers a document as an undirected graph of which the nodes are the sentiment in document level and the sentiments in sentence level and of which the edges expressed the dependency of two sentiments
+Modern speech synthesis technology enables to produce speech with subtle emotions such as little anger and little shameful
+Moreover it can mix some voices speaking styles with the weights of the spectrum model the weights for the fundamental frequency model and the weights for the duration model of the voices
+Moreover with the gender parameter speech can be produced with the degree of the gender
+Of two emotion states dislike and excitement 90% agreements with manual annotate
+Since our target is Twitter and emoticons used in Twitter is too different to use CAO for our goal
+Such text is considered that expressing negative emotion as a result and shows that the performance of the analysis using emoticons is better than using only words
+The 1st and 2nd in this example are succeeded by keyword matching
+The 3rd and 4th in this are examples of negation and partial negation
+The 3rd is succeeded However the 4th is not succeeded well
+The CAO published in their web page detects emoticons just using pattern matching with regular expression
+The annotate states are 10 dislike fondness excitement fear sadness surprise joy relief anger shame
+The emotions of the emoticons are estimated with an emoticon lexicon the emotion of a document containing one emoticon is estimated to be the emotion of the emoticon and the emotion of a document containing two or emotions is estimated to be the average the emotions
+The sentiment in document level depends on every sentiment in sentence level and a sentiment in sentence level depends on both sentiments of one before and after sentences
+This CVS may map from one emotion state to two or more emotion states for example the emotion shame is mapped to the emotions relief and sadness
+This dependency between document level and sentence level is expressed as an undirected graph and McDonald s model learns the undirected graph that is features over the clique in the undirected graph and weights for them
+This fact shows that almost paragraphs contains just one emoticon at the end
+This is because some people writes a positive sentence and puts a negative emoticon at last of the sentence
+This is because to the lexicon for joy and the lexicon for relief and emotion relief is shifted to the five emotions: anger excitement surprise shame fear finally the emotions of the sentence are the six emotions as a total
+This model enable to do polarity classification in various levels such as document level and sentence level an exploiting emoticons for sentiment analysis is introduced we introduce keyword-based affect analysis and an affect analysis system ML-Ask which is keyword-based and an implement of CVS we introduce what modern speech synthesis can do
+This system detects emoticons from text and annotates them with 10 emotion states
+This tool extracts emotions from Japanese text by keyword matching and Contextual Valence Shifters CVS
+This tool has ten lexicons for ten emotions
