@@ -85,8 +85,11 @@ double var_ratio(vector<RP>&s) {
 
 inline
 bool is_good(vector<RP>&s) {
+  if (mode) {
+    const int n = var_count(s);
+    return (c_sub <= n) and (n < c_sup);
+  }
   const double r = var_ratio(s);
-  const int n = var_count(s);
   return (rho_sub <= r) and (r < rho_sup);
 }
 
@@ -333,7 +336,7 @@ vector<vector<RP>> kmmg(vector<int>&ids)
     auto pc = pcs.front(); pcs.pop();
     {
       auto p = var_simplify(pc.first);
-      if (is_good(p)) { ret.push_back(p); }
+      if (is_good(p)) ret.push_back(p);
     }
     auto pcs_next = division(pc.first, pc.second);
     if (pcs_next.size() < 2) { // not divisible
@@ -352,8 +355,13 @@ vector<vector<RP>> kmmg(vector<int>&ids)
 
 double str2double(string s) {
   stringstream a(s);
-  double r;
-  a >> r;
+  double r; a >> r;
+  return r;
+}
+
+int str2int(string s) {
+  stringstream a(s);
+  int r; a >> r;
   return r;
 }
 
@@ -361,38 +369,52 @@ int main(int argc, char*argv[])
 {
   for (int i = 1; i < argc; ++i) {
     string s = string(argv[i]);
-    if (s == "-m") {
+    if (s == "-c") {
+      mode = true;
+    } else if (s == "-r") {
+      mode = false;
+    } else if (s == "-sub") {
       ++i;
-      rho_sub = str2double(string(argv[i]));
-      if (rho_sub < 0.0 or rho_sub > 1.0) {
-        rho_sub = 0.0;
-        cerr << "[warn] 0.0 <= rho^minus <= 1.0" << endl;
+      if (mode) {
+        c_sub = str2int(string(argv[i]));
+      } else {
+        rho_sub = str2double(string(argv[i]));
       }
-    } else if (s == "-p") {
+    } else if (s == "-sup") {
       ++i;
-      rho_sup = str2double(string(argv[i]));
-      if (rho_sup < 0.0 or rho_sup > 1.0) {
-        rho_sup = 0.0;
-        cerr << "[warn] 0.0 <= rho^plus <= 1.0" << endl;
+      if (mode) {
+        c_sup = str2int(string(argv[i]));
+      } else {
+        rho_sup = str2double(string(argv[i]));
       }
     } else {
       cerr << "[error] unknown option: " << s << endl;
       return 1;
     }
   }
-  if (rho_sub >= rho_sup) {
+  if ((not mode) and (rho_sub >= rho_sup)) {
+    cerr << "[error] rho_minus < rho_plus" << endl;
+    return 1;
+  }
+  if (mode and (c_sub >= c_sup)) {
     cerr << "[error] rho_minus < rho_plus" << endl;
     return 1;
   }
   {
     cerr << "# parameteres" << endl;
-    cerr << "rho^minus = " << rho_sub << endl;
-    cerr << "rho^plus  = " << rho_sup << endl;
+    if (mode) {
+      cerr << "is_good by the var count" << endl;
+      cerr << "[sub, sup) = " << c_sub << ", " << c_sup << endl;
+    } else {
+      cerr << "is_good by the var ratio" << endl;
+      cerr << "[sub, sup) = " << rho_sub << ", " << rho_sup << endl;
+    }
   }
   loop {
     string s;
     getline(cin, s);
     if (not cin) break;
+    if (s == "") continue;
     doc.push_back(as_words(s));
   }
   const int n = doc.size();
