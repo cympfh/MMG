@@ -1,23 +1,52 @@
 # mmg-extracted patterns
 
 MMG (Minimal multiple generalizations) algorithm<sup>[1]</sup>
-expand the partial covering pattern-tree.
-This extracts the tree of multiple-nonerasing-regular-pattern, then
-collect all patterns s.t.
+expands a tree of partial covering Regular Patterns.
 
-- $csub <= var\_count < csup$ (var count goodness mode) or
-- $rsub <= var\_ratio < rsup$ (var ratio goodness mode)
+## k-multiple
+
+option `-k`
+
+```
+./mmg.exe -k 4 < sample/data
+```
+
+generates at most 4 patterns
+which expresses the all `sample/data`.
+
+## filtering with var_count
+
+option `-c`
+
+```
+./mmg.exe -c < sample/job
+```
+
+expands the whole tree, and collect all patterns  
+such that
+
+`csub <= var_count < csup`
 
 where
-var\_count is the num of vars in the pattern, and
-var\_ratio is the ratio of vars.
+`var_count` is the num of vars in the pattern.  
+In default `csub = 1` and `csup = 4` (written in `mmg.h`).
 
-## options
+### `-sub` and `-sup`
 
-- `-c`: var count goodness mode (in default)
-- `-r`: var ratio goodness mode
-- `-sub`: csub or rsub
-- `-sup`: csup or rsup
+```
+./mmg.exe -c -sub 3 -sup 6 < sample/job
+```
+
+## filtering with var_ratio
+
+optione `-r`
+
+uses the `var_ratio` (the ratio of var in the pattern)  
+instead of `var_count` in `-c`
+
+`rsub <= var_ratio < rsup`
+
+In default (written in `mmg.h`), `rsub = 0.2` and `rsup = 0.8`.
 
 ---
 

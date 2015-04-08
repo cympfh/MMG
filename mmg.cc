@@ -1,5 +1,5 @@
 #include <bits/stdc++.h>
-#include "./kmmg.h"
+#include "./mmg.h"
 
 using namespace std;
 
@@ -85,12 +85,14 @@ double var_ratio(vector<RP>&s) {
 
 inline
 bool is_good(vector<RP>&s) {
-  if (mode) {
+  if (gm == VAR_COUNT) {
     const int n = var_count(s);
     return (c_sub <= n) and (n < c_sup);
+  } else if (gm == VAR_RATIO) {
+    const double r = var_ratio(s);
+    return (rho_sub <= r) and (r < rho_sup);
   }
-  const double r = var_ratio(s);
-  return (rho_sub <= r) and (r < rho_sup);
+  return false;
 }
 
 void push(vector<vector<RP>>&v, vector<RP> xs) {
@@ -334,13 +336,24 @@ vector<vector<RP>> kmmg(vector<int>&ids)
   /* division */
   while (not pcs.empty()) {
     auto pc = pcs.front(); pcs.pop();
-    {
+    if (gm != K_MULTIPLE) {
       auto p = var_simplify(pc.first);
       if (is_good(p)) ret.push_back(p);
     }
     auto pcs_next = division(pc.first, pc.second);
     if (pcs_next.size() < 2) { // not divisible
+      if (gm == K_MULTIPLE) ret.push_back(pc.first);
       continue;
+    }
+    if (gm == K_MULTIPLE) {
+      if (ret.size() + pcs.size() + pcs_next.size() > K) {
+        ret.push_back(pc.first);
+        while (not pcs.empty()) {
+          ret.push_back(pcs.front().first);
+          pcs.pop();
+        }
+        return ret;
+      }
     }
     for (auto&pc_next: pcs_next) {
       pc_next = make_pair(
@@ -370,19 +383,23 @@ int main(int argc, char*argv[])
   for (int i = 1; i < argc; ++i) {
     string s = string(argv[i]);
     if (s == "-c") {
-      mode = true;
+      gm = VAR_COUNT;
     } else if (s == "-r") {
-      mode = false;
+      gm = VAR_RATIO;
+    } else if (s == "-k") {
+      gm = K_MULTIPLE;
+      ++i;
+      K = str2int(string(argv[i]));
     } else if (s == "-sub") {
       ++i;
-      if (mode) {
+      if (gm == VAR_COUNT) {
         c_sub = str2int(string(argv[i]));
       } else {
         rho_sub = str2double(string(argv[i]));
       }
     } else if (s == "-sup") {
       ++i;
-      if (mode) {
+      if (gm == VAR_COUNT) {
         c_sup = str2int(string(argv[i]));
       } else {
         rho_sup = str2double(string(argv[i]));
@@ -392,22 +409,44 @@ int main(int argc, char*argv[])
       return 1;
     }
   }
-  if ((not mode) and (rho_sub >= rho_sup)) {
-    cerr << "[error] rho_minus < rho_plus" << endl;
-    return 1;
+  { // parameter check
+    switch (gm) {
+    case VAR_RATIO:
+      if (rho_sub >= rho_sup) {
+        cerr << "[error] rho_minus < rho_plus" << endl;
+        return 1;
+      }
+      break;
+    case VAR_COUNT:
+      if (c_sub >= c_sup) {
+        cerr << "[error] rho_minus < rho_plus" << endl;
+        return 1;
+      }
+      break;
+    case K_MULTIPLE:
+      if (K < 1) {
+        cerr << "[error] K must be int larger then 0" << endl;
+        return 1;
+      }
+      break;
+    default:
+      cerr << "[error] program error" << endl;
+      return 1;
+    }
   }
-  if (mode and (c_sub >= c_sup)) {
-    cerr << "[error] rho_minus < rho_plus" << endl;
-    return 1;
-  }
-  {
+  { // debug print
     cerr << "# parameteres" << endl;
-    if (mode) {
+    switch (gm) {
+    case VAR_COUNT:
       cerr << "is_good by the var count" << endl;
       cerr << "[sub, sup) = " << c_sub << ", " << c_sup << endl;
-    } else {
+      break;
+    case VAR_RATIO:
       cerr << "is_good by the var ratio" << endl;
       cerr << "[sub, sup) = " << rho_sub << ", " << rho_sup << endl;
+      break;
+    case K_MULTIPLE:
+      cerr << K << "-multiple" << endl;
     }
   }
   loop {
