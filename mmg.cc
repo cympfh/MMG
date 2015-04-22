@@ -5,7 +5,7 @@ using namespace std;
 
 #define rep(i,n) for(int i=0;i<(n);++i)
 #define loop for(;;)
-#define trace(var) cout<<">>> "<<#var<<" = "<<var<<endl;
+#define trace(var) cerr<<">>> "<<#var<<" = "<<var<<endl;
 
 template<class T>
 ostream& operator<<(ostream& os, vector<T> v) {
@@ -22,7 +22,7 @@ ostream& operator<<(ostream& os, vector<T> v) {
 
 template<class S, class T>
 ostream& operator<<(ostream& os, pair<S,T> p) {
-  os << '(' << car(p) << ", " << cdr(p) << ')';
+  os << '(' << p.first << ", " << p.second << ')';
   return os;
 }
 
@@ -77,7 +77,7 @@ int var_count(vector<RP>&s) {
 
 inline
 double var_ratio(vector<RP>&s) {
-  int n = s.size();
+  const int n = s.size();
   int m = 0;
   rep (i, n) if (s[i].is_var) ++m;
   return double(m) / double(n);
@@ -95,20 +95,7 @@ bool is_good(vector<RP>&s) {
   return false;
 }
 
-void push(vector<vector<RP>>&v, vector<RP> xs) {
-  const unsigned n = xs.size();
-  for (auto&ys : v) {
-    if (ys.size() == n) {
-      bool bl = true;
-      for (unsigned i = 0; i < n; ++i)
-        if (xs[i] != ys[i]) bl = false;
-      if (bl) { return; }
-    }
-  }
-  v.push_back(xs);
-}
-
-/* non-erasing generalization */
+/* non-erasing generalization system <= */
 bool preceq(vector<string>&sentence, vector<RP>&sigma) {
   const int n = sentence.size();
   const int m = sigma.size();
@@ -118,6 +105,12 @@ bool preceq(vector<string>&sentence, vector<RP>&sigma) {
   bool erasing = false;
   for (; i < n and j < m;) {
     if (sigma[j].is_var) { ++i; ++j; erasing = true; }
+    else if (erasing
+        and sentence[i] == sigma[j].str
+        and i < n-1 and j < m-1
+        and (not sigma[j+1].is_var)
+        and sentence[i+1] != sigma[j+1].str) {
+      ++i; }
     else if (sentence[i] == sigma[j].str) { ++i; ++j; erasing = false; }
     else if (erasing) { ++i; }
     else { return false; }
@@ -127,8 +120,8 @@ bool preceq(vector<string>&sentence, vector<RP>&sigma) {
 }
 
 bool language_include(vector<RP>&p, vector<vector<string>>&S) {
-  for (vector<string>&s : S)
-    if (! preceq(s, p)) return false;
+  for (auto&s: S)
+    if (not preceq(s, p)) return false;
   return true;
 }
 
@@ -178,18 +171,18 @@ set<string> collect(vector<RP> p, vector<int> c) {
 
 // takes: one pattern and its covering
 // returns: one pattern extended
-vector<RP> tightest_refinement(vector<RP>&p, vector<int>&c)
+vector<RP> tighten(vector<RP>&p, vector<int>&c)
 {
   const int n = p.size();
 
-  for (int i = 0; i < n; ++i) {
+  rep (i, n) {
     if (p[i].is_var) {
       vector<RP> r;
       for (int j = 0; j < i; ++j) r.push_back(p[i]);
       r.push_back(RP());
       for (int j = i; j < n; ++j) r.push_back(p[i]);
       if (language_include(r, c)) {
-        return tightest_refinement(r, c);
+        return tighten(r, c);
       }
     }
   }
@@ -200,7 +193,7 @@ vector<RP> tightest_refinement(vector<RP>&p, vector<int>&c)
       p[i].is_var = false;
       p[i].str = s;
       if (language_include(p, c)) {
-        return tightest_refinement(p, c);
+        return tighten(p, c);
       }
       p[i].is_var = true;
     }
@@ -208,72 +201,61 @@ vector<RP> tightest_refinement(vector<RP>&p, vector<int>&c)
   return p;
 }
 
-bool is_subset(map<int, bool>&m, vector<RP>&p, vector<int>&c) {
-  bool bl = true;
-  for (int i: c) {
-    if (not m[i]) {
-      bl = false;
-      break;
-    }
-  }
-#ifdef DEBUG
-  cout << "candidate for cspc" << endl;
-  cout << p << ": " << c << "  " << (bl ? "✗" : "✔") << endl;
-#endif
-  return bl;
-}
-
 vector<pair<vector<RP>, vector<int>>>
 division(vector<RP> p, vector<int> c)
 {
   const int n = p.size();
+  const int M = c.size();
   set<string> alphabets = collect(p, c);
-  map<int, bool> m;
 
   vector<pair<vector<RP>, vector<int>>> cspc;
-  // rho+
-  for (auto&s : alphabets) {
-    for (int i = 0; i < n; ++i) {
+
+  // <> -> a
+  for (auto&s: alphabets) {
+    rep (i, n) {
       if (not p[i].is_var) continue;
       p[i].is_var = false;
       p[i].str = s;
       auto pc = partial_covering(p, c);
-      if (not is_subset(m, p, pc)) {
-        for (int i : pc) m[i] = true;
+
+      if ((pc.size() > 0) and (pc.size() < M)) {
         cspc.push_back(make_pair(p, pc));
       }
       p[i].is_var = true;
     }
   }
-  for (auto&s : alphabets) {
-    for (int i = 0; i < n; ++i) {
+  for (auto&s: alphabets) {
+    rep(i, n) {
       if (not p[i].is_var) continue;
       vector<RP> q;
-      for (int k = 0; k < i; ++k) q.push_back(p[i]);
+
+      // <> -> <> a
+      for (int k = 0; k < i; ++k) q.push_back(p[k]);
       q.push_back(RP()); // q[i]
       q.push_back(RP(s)); // q[i+1]
-      for (int k = i + 1; k < n; ++k) q.push_back(p[i]);
+      for (int k = i + 1; k < n; ++k) q.push_back(p[k]);
       {
         auto pc = partial_covering(q, c);
-        if (not is_subset(m, q, pc)) {
-          for (int i : pc) m[i] = true;
+        if ((pc.size() > 0) and (pc.size() < M)) {
           cspc.push_back(make_pair(q, pc));
         }
       }
+
+      // <> -> a <>
       q[i] = RP(s);
       q[i+1] = RP();
       {
         auto pc = partial_covering(q, c);
-        if (not is_subset(m, q, pc)) {
-          for (int i : pc) m[i] = true;
+        if ((pc.size() > 0) and (pc.size() < M)) {
           cspc.push_back(make_pair(q, pc));
         }
       }
+
+      // <> -> <> <>
       q[i] = RP();
       {
         auto pc = partial_covering(q, c);
-        if (not is_subset(m, q, pc)) {
-          for (int i : pc) m[i] = true;
+        if ((pc.size() > 0) and (pc.size() < M)) {
           cspc.push_back(make_pair(q, pc));
         }
       }
@@ -288,20 +270,26 @@ division(vector<RP> p, vector<int> c)
           return x.second.size() > y.second.size(); });
 
   vector<pair<vector<RP>, vector<int>>> ret;
-  m.clear();
-  for (auto&pc : cspc) {
-    bool is_subset =
-      accumulate(pc.second.begin(), pc.second.end(), true,
-          [&](bool ac, int i) { return ac and m[i]; });
-    if (is_subset) continue;
-
-    ret.push_back(pc);
-    for (int i : pc.second) m[i] = true;
+  set<int> m;
+  for (auto&pc: cspc) {
+    // 被覆してない部分がある?
+    bool bl = false;
+    for (int i: pc.second) {
+      if (m.count(i) == 0) {
+        bl = true;
+        break;
+      }
+    }
+    if (bl) {
+      ret.push_back(pc);
+      for (int i: pc.second) m.insert(i);
+    }
   }
 
   return ret;
 }
 
+// <> <>* -> <>
 vector<RP> var_simplify(vector<RP>&s) {
   vector<RP> r;
   bool b = false;
@@ -326,9 +314,12 @@ vector<vector<RP>> kmmg(vector<int>&ids)
   const int n = ids.size();
 
   vector<RP> top { RP() };
-  auto pc = tightest_refinement(top, ids);
+  auto pc = tighten(top, ids);
 
-  // collection of (pattern :: vector<RP>, covering :: vector<int>)
+  // いくつのパターンに被覆されているか
+  vector<int> cover_count(n, 1);
+
+  // collection of (pattern::vector<RP>, covering::vector<int>)
   queue<pair<vector<RP>, vector<int>>> pcs;
   pcs.push(make_pair(pc, ids));
   vector<vector<RP>> ret;
@@ -340,7 +331,16 @@ vector<vector<RP>> kmmg(vector<int>&ids)
       auto p = var_simplify(pc.first);
       if (is_good(p)) ret.push_back(p);
     }
-    auto pcs_next = division(pc.first, pc.second);
+
+    // S = Doc \ L( Pi \ p)
+    vector<int> S;
+    for (int i: pc.second) {
+      if (cover_count[i] == 1) S.push_back(i);
+      --cover_count[i];
+    }
+    if (S.size() == 0) continue;
+
+    auto pcs_next = division(pc.first, S);
     if (pcs_next.size() < 2) { // not divisible
       if (gm == K_MULTIPLE) ret.push_back(pc.first);
       continue;
@@ -355,10 +355,18 @@ vector<vector<RP>> kmmg(vector<int>&ids)
         return ret;
       }
     }
+
     for (auto&pc_next: pcs_next) {
-      pc_next = make_pair(
-          tightest_refinement(pc_next.first, pc_next.second),
-          pc_next.second);
+      for (int i: pc_next.second) ++cover_count[i];
+    }
+    for (auto&pc_next: pcs_next) {
+      // Doc - (Pi - pc_next)
+      vector<int> S;
+      for (int i: pc_next.second) {
+        if (cover_count[i] == 1) S.push_back(i);
+        else --cover_count[i];
+      }
+      pc_next = make_pair( tighten(pc_next.first, S), S);
       pcs.push(pc_next);
     }
   }
