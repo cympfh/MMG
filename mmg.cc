@@ -96,27 +96,31 @@ bool is_good(vector<RP>&s) {
 }
 
 /* non-erasing generalization system <= */
-bool preceq(vector<string>&sentence, vector<RP>&sigma) {
-  const int n = sentence.size();
-  const int m = sigma.size();
-  if (m == 0) return false;
-  int i = 0,
-      j = 0;
-  bool erasing = false;
-  for (; i < n and j < m;) {
-    if (sigma[j].is_var) { ++i; ++j; erasing = true; }
-    else if (erasing
-        and sentence[i] == sigma[j].str
-        and i < n-1 and j < m-1
-        and (not sigma[j+1].is_var)
-        and sentence[i+1] != sigma[j+1].str) {
-      ++i; }
-    else if (sentence[i] == sigma[j].str) { ++i; ++j; erasing = false; }
-    else if (erasing) { ++i; }
-    else { return false; }
+bool preceq(vector<string> s, vector<RP> sigma) {
+  const int n = s.size(),
+        m = sigma.size();
+  vector<vector<bool>> M(n, vector<bool>(m, false));
+  rep (i, n) {
+    rep (j, m) {
+      if (i == 0 and j == 0) {
+        M[0][0] = sigma[0].is_var or (sigma[0].str == s[0]);
+        if (not M[0][0]) return false;
+      }
+      else if (i == 0) {
+        M[0][j] = false;
+      }
+      else if (j == 0) {
+        M[i][0] = M[i-1][0] and sigma[0].is_var;
+      }
+      else {
+        M[i][j] =
+          (M[i-1][j-1] and (sigma[j].is_var or (sigma[j].str == s[i])))
+          or
+          (M[i][j] = M[i-1][j] and sigma[j].is_var);
+      }
+    }
   }
-  while (i < n and erasing) ++i;
-  return i == n and j == m;
+  return M[n-1][m-1];
 }
 
 bool language_include(vector<RP>&p, vector<vector<string>>&S) {
