@@ -10,8 +10,8 @@ test: mmg.exe
 	./mmg.exe -k 5 < sample/data3 > sample/data3.out && \
 	diff sample/data3.out sample/data3.ans
 
-mmg.exe: mmg.h mmg.cc
-	g++ --std=c++11 -O3 -o $@ mmg.cc
+mmg.exe: main.cc mmg.h mmg.cc
+	g++ --std=c++11 -O3 -o $@ main.cc
 
 clean:
 	rm -f *.exe sample/*.out

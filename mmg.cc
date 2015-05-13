@@ -2,6 +2,7 @@
 #include "./mmg.h"
 
 using namespace std;
+using vi = vector<int>;
 
 #define rep(i,n) for(int i=0;i<(n);++i)
 #define loop for(;;)
@@ -54,6 +55,8 @@ struct RP
   }
 };
 
+using P = vector<RP>;
+
 bool operator<(RP a, RP b) {
   if (a.is_var) {
     return not b.is_var;
@@ -68,7 +71,7 @@ ostream& operator<<(ostream& os, RP r) {
 }
 
 inline
-int var_count(vector<RP>&s) {
+int var_count(P&s) {
   const int n = s.size();
   int m = 0;
   rep (i, n) if (s[i].is_var) ++m;
@@ -76,7 +79,7 @@ int var_count(vector<RP>&s) {
 }
 
 inline
-double var_ratio(vector<RP>&s) {
+double var_ratio(P&s) {
   const int n = s.size();
   int m = 0;
   rep (i, n) if (s[i].is_var) ++m;
@@ -84,7 +87,7 @@ double var_ratio(vector<RP>&s) {
 }
 
 inline
-bool is_good(vector<RP>&s) {
+bool is_good(P&s) {
   if (gm == VAR_COUNT) {
     const int n = var_count(s);
     return (c_sub <= n) and (n < c_sup);
@@ -96,7 +99,7 @@ bool is_good(vector<RP>&s) {
 }
 
 /* non-erasing generalization system <= */
-bool preceq(vector<string> s, vector<RP> sigma) {
+bool preceq(vector<string> s, P sigma) {
   const int n = s.size(),
         m = sigma.size();
   vector<vector<bool>> M(n, vector<bool>(m, false));
@@ -123,32 +126,32 @@ bool preceq(vector<string> s, vector<RP> sigma) {
   return M[n-1][m-1];
 }
 
-bool language_include(vector<RP>&p, vector<vector<string>>&S) {
+bool language_include(P&p, vector<vector<string>>&S) {
   for (auto&s: S)
     if (not preceq(s, p)) return false;
   return true;
 }
 
-vector<vector<string>> doc;
+vector<vector<string>> docs;
 
-bool language_include(vector<RP>&p, vector<int> c) {
+bool language_include(P&p, vi c) {
   for (int i: c)
-    if (not preceq(doc[i], p)) return false;
+    if (not preceq(docs[i], p)) return false;
   return true;
 }
 
-vector<int> partial_covering(vector<RP> p, vector<int> c) {
-  vector<int> r;
+vi partial_covering(P p, vi c) {
+  vi r;
   for (int i: c)
-    if (preceq(doc[i], p)) r.push_back(i);
+    if (preceq(docs[i], p)) r.push_back(i);
   return r;
 }
 
-set<string> collect(vector<RP> p, vector<int> c) {
+set<string> collect(P p, vi c) {
   const int n = p.size();
   set<string> s;
   for (int idx: c) {
-    vector<string>&words = doc[idx];
+    vector<string>&words = docs[idx];
     const int m = words.size();
 
     int i = 0, // on p
@@ -175,13 +178,13 @@ set<string> collect(vector<RP> p, vector<int> c) {
 
 // takes: one pattern and its covering
 // returns: one pattern extended
-vector<RP> tighten(vector<RP>&p, vector<int>&c)
+P tighten(P&p, vi&c)
 {
   const int n = p.size();
 
   rep (i, n) {
     if (p[i].is_var) {
-      vector<RP> r;
+      P r;
       for (int j = 0; j < i; ++j) r.push_back(p[j]);
       r.push_back(RP());
       for (int j = i; j < n; ++j) r.push_back(p[j]);
@@ -205,15 +208,12 @@ vector<RP> tighten(vector<RP>&p, vector<int>&c)
   return p;
 }
 
-vector<pair<vector<RP>, vector<int>>>
-division(vector<RP> p, vector<int> c)
-{
+vector<pair<P, vi>> division(P p, vi c) {
   const int n = p.size();
   const int M = c.size();
   set<string> alphabets = collect(p, c);
 
-  vector<pair<vector<RP>, vector<int>>> cspc;
-
+  vector<pair<P, vi>> cspc; 
   // <> -> a
   for (auto&s: alphabets) {
     rep (i, n) {
@@ -231,7 +231,7 @@ division(vector<RP> p, vector<int> c)
   for (auto&s: alphabets) {
     rep(i, n) {
       if (not p[i].is_var) continue;
-      vector<RP> q;
+      P q;
 
       // <> -> <> a
       for (int k = 0; k < i; ++k) q.push_back(p[k]);
@@ -269,11 +269,11 @@ division(vector<RP> p, vector<int> c)
   // 最小被覆としたいところだが、NP-hard である
   // 被覆が大きいのからあれしてこう
   sort(cspc.begin(), cspc.end(), 
-      [](pair<vector<RP>, vector<int>> x,
-         pair<vector<RP>, vector<int>> y) {
+      [](pair<P, vi> x,
+         pair<P, vi> y) {
           return x.second.size() > y.second.size(); });
 
-  vector<pair<vector<RP>, vector<int>>> ret;
+  vector<pair<P, vi>> ret;
   set<int> m;
   for (auto&pc: cspc) {
     // 被覆してない部分がある?
@@ -294,8 +294,8 @@ division(vector<RP> p, vector<int> c)
 }
 
 // <> <>* -> <>
-vector<RP> var_simplify(vector<RP>&s) {
-  vector<RP> r;
+P var_simplify(P&s) {
+  P r;
   bool b = false;
   for (auto&u: s) {
     if (u.is_var) {
@@ -313,20 +313,23 @@ vector<RP> var_simplify(vector<RP>&s) {
   return r;
 }
 
-vector<vector<RP>> kmmg(vector<int>&ids)
+vector<P> kmmg(vector<vector<string>>&_docs)
 {
-  const int n = ids.size();
+  docs = _docs;
+  const int n = docs.size();
 
-  vector<RP> top { RP() };
+  vi ids(n); rep(i, n) ids[i] = i;
+
+  P top { RP() };
   auto pc = tighten(top, ids);
 
   // いくつのパターンに被覆されているか
-  vector<int> cover_count(n, 1);
+  vi cover_count(n, 1);
 
   // collection of (pattern::vector<RP>, covering::vector<int>)
-  queue<pair<vector<RP>, vector<int>>> pcs;
+  queue<pair<P, vi>> pcs;
   pcs.push(make_pair(pc, ids));
-  vector<vector<RP>> ret;
+  vector<P> ret;
 
   /* division */
   while (not pcs.empty()) {
@@ -337,7 +340,7 @@ vector<vector<RP>> kmmg(vector<int>&ids)
     }
 
     // S = Doc \ L( Pi \ p)
-    vector<int> S;
+    vi S;
     for (int i: pc.second) {
       if (cover_count[i] == 1) S.push_back(i);
       --cover_count[i];
@@ -365,7 +368,7 @@ vector<vector<RP>> kmmg(vector<int>&ids)
     }
     for (auto&pc_next: pcs_next) {
       // Doc - (Pi - pc_next)
-      vector<int> S;
+      vi S;
       for (int i: pc_next.second) {
         if (cover_count[i] == 1) S.push_back(i);
         else --cover_count[i];
@@ -376,109 +379,4 @@ vector<vector<RP>> kmmg(vector<int>&ids)
   }
 
   return ret;
-}
-
-double str2double(string s) {
-  stringstream a(s);
-  double r; a >> r;
-  return r;
-}
-
-int str2int(string s) {
-  stringstream a(s);
-  int r; a >> r;
-  return r;
-}
-
-int main(int argc, char*argv[])
-{
-  for (int i = 1; i < argc; ++i) {
-    string s = string(argv[i]);
-    if (s == "-c") {
-      gm = VAR_COUNT;
-    } else if (s == "-r") {
-      gm = VAR_RATIO;
-    } else if (s == "-k") {
-      gm = K_MULTIPLE;
-      ++i;
-      K = str2int(string(argv[i]));
-    } else if (s == "-sub") {
-      ++i;
-      if (gm == VAR_COUNT) {
-        c_sub = str2int(string(argv[i]));
-      } else {
-        rho_sub = str2double(string(argv[i]));
-      }
-    } else if (s == "-sup") {
-      ++i;
-      if (gm == VAR_COUNT) {
-        c_sup = str2int(string(argv[i]));
-      } else {
-        rho_sup = str2double(string(argv[i]));
-      }
-    } else {
-      cerr << "[error] unknown option: " << s << endl;
-      return 1;
-    }
-  }
-  { // parameter check
-    switch (gm) {
-    case VAR_RATIO:
-      if (rho_sub >= rho_sup) {
-        cerr << "[error] rho_minus < rho_plus" << endl;
-        return 1;
-      }
-      break;
-    case VAR_COUNT:
-      if (c_sub >= c_sup) {
-        cerr << "[error] rho_minus < rho_plus" << endl;
-        return 1;
-      }
-      break;
-    case K_MULTIPLE:
-      if (K < 1) {
-        cerr << "[error] K must be int larger then 0" << endl;
-        return 1;
-      }
-      break;
-    default:
-      cerr << "[error] program error" << endl;
-      return 1;
-    }
-  }
-  { // debug print
-    cerr << "# parameteres" << endl;
-    switch (gm) {
-    case VAR_COUNT:
-      cerr << "is_good by the var count" << endl;
-      cerr << "[sub, sup) = " << c_sub << ", " << c_sup << endl;
-      break;
-    case VAR_RATIO:
-      cerr << "is_good by the var ratio" << endl;
-      cerr << "[sub, sup) = " << rho_sub << ", " << rho_sup << endl;
-      break;
-    case K_MULTIPLE:
-      cerr << K << "-multiple" << endl;
-    }
-  }
-  loop {
-    string s;
-    getline(cin, s);
-    if (not cin) break;
-    if (s == "") continue;
-    doc.push_back(as_words(s));
-  }
-  const int n = doc.size();
-  vector<int> ids(n);
-  rep (i, n) ids[i] = i;
-
-  // 行くぜ
-  set<vector<RP>> patterns;
-  {
-    auto ps = kmmg(ids);
-    for (auto&p: ps) patterns.insert(p);
-  }
-  for (auto&p: patterns) cout << p << endl;
-
-  return 0;
 }
