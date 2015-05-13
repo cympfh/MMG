@@ -182,9 +182,9 @@ vector<RP> tighten(vector<RP>&p, vector<int>&c)
   rep (i, n) {
     if (p[i].is_var) {
       vector<RP> r;
-      for (int j = 0; j < i; ++j) r.push_back(p[i]);
+      for (int j = 0; j < i; ++j) r.push_back(p[j]);
       r.push_back(RP());
-      for (int j = i; j < n; ++j) r.push_back(p[i]);
+      for (int j = i; j < n; ++j) r.push_back(p[j]);
       if (language_include(r, c)) {
         return tighten(r, c);
       }
