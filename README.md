@@ -3,50 +3,47 @@
 MMG (Minimal multiple generalizations) algorithm<sup>[1]</sup>
 expands a tree of partial covering Regular Patterns.
 
-## k-multiple
+# Usage
 
-option `-k`
+```
+% ./mmg.exe
+Usage: ./mmg.exe [ -K <int> ] [ -c -sub <int> -sup <int> ] [ -r -sub <double> -sup <double> ]
+-K k                  run k-mmg (assert k > 0)
+-c -sub c0 -sup c1    outputs all patterns when containing n var and (c0 <= n < c1) (assert c0 < c1)
+-r -sub r0 -sup r1    outputs all patterns when its var-ratio is r and (r0 <= r < r1) (assert r0 < r1)
+```
+
+## k-multiple
 
 ```
 ./mmg.exe -k 4 < sample/data
 ```
 
 generates at most 4 patterns
-which expresses the all `sample/data`.
 
-## filtering with var_count
+## filtering with var count
+
+`-c` not determine `k`.
+
+Assume k is infinity,
+`-c` outputs all pattens
+which contains `n` variable symbols
+(c0 <= n < c1).
 
 option `-c`
 
-```
-./mmg.exe -c < sample/job
-```
+## filtering with var ratio
 
-expands the whole tree, and collect all patterns  
-such that
+`-r` also not determine `k`.
 
-`csub <= var_count < csup`
+Assume k is infinity,
+`-c` outputs all pattens
+whose var ratio is `r`
+(r = n / length, r0 <= r < r1).
 
-where
-`var_count` is the num of vars in the pattern.  
-In default `csub = 1` and `csup = 4` (written in `mmg.h`).
+# Example
 
-### `-sub` and `-sup`
-
-```
-./mmg.exe -c -sub 3 -sup 6 < sample/job
-```
-
-## filtering with var_ratio
-
-optione `-r`
-
-uses the `var_ratio` (the ratio of var in the pattern)  
-instead of `var_count` in `-c`
-
-`rsub <= var_ratio < rsup`
-
-In default (written in `mmg.h`), `rsub = 0.2` and `rsup = 0.8`.
+see `make test`
 
 ---
 
