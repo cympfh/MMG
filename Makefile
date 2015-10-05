@@ -1,4 +1,6 @@
-debug: main.cc mmg.cc
+all: mmg.exe mmg.debug.exe
+
+mmg.debug.exe: main.cc mmg.cc
 	g++ --std=c++11 -g -o mmg.debug.exe main.cc
 
 test: mmg.exe
