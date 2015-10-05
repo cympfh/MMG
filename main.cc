@@ -1,5 +1,7 @@
 #include "./mmg.cc"
 
+bool SILENT = false;
+
 double str2double(string s) {
   stringstream a(s);
   double r; a >> r;
@@ -18,7 +20,8 @@ int main(int argc, char*argv[])
   goto begin;
 
 help:
-      cerr << "Usage: ./mmg.exe [ -K <int> ] [ -c -sub <int> -sup <int> ] [ -r -sub <double> -sup <double> ]" << endl;
+      cerr << "Usage: ./mmg.exe [-s] [-K <int>] [-c -sub <int> -sup <int>] [-r -sub <double> -sup <double>]" << endl;
+      cerr << "-s                    silent mode" << endl;
       cerr << "-K k                  run k-mmg (assert k > 0)" << endl;
       cerr << "-c -sub c0 -sup c1    outputs all patterns when containing n var and (c0 <= n < c1) (assert c0 < c1)" << endl;
       cerr << "-r -sub r0 -sup r1    outputs all patterns when its var-ratio is r and (r0 <= r < r1) (assert r0 < r1)" << endl;
@@ -51,6 +54,8 @@ begin:
       } else {
         rho_sup = str2double(string(argv[i]));
       }
+    } else if (arg == "-s") {
+      SILENT = true;
     } else {
       goto help;
     }
@@ -72,7 +77,7 @@ begin:
     }
   }
 
-  { // debug print
+  if (not SILENT) { // debug print
     cerr << "# parameteres" << endl;
     switch (gm) {
     case VAR_COUNT:

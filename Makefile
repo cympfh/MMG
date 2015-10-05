@@ -1,3 +1,6 @@
+debug: main.cc mmg.cc
+	g++ --std=c++11 -g -o mmg.debug.exe main.cc
+
 test: mmg.exe
 	./mmg.exe -K 4 < sample/data1 > sample/data1.out && \
 	diff sample/data1.out sample/data1.ans
