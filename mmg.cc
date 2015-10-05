@@ -56,6 +56,7 @@ struct RP
 };
 
 using P = vector<RP>;
+using Text = vector<string>;
 
 bool operator<(RP a, RP b) {
   if (a.is_var) {
@@ -71,7 +72,7 @@ ostream& operator<<(ostream& os, RP r) {
 }
 
 inline
-int var_count(P&s) {
+int var_count(const P& s) {
   const int n = s.size();
   int m = 0;
   rep (i, n) if (s[i].is_var) ++m;
@@ -79,7 +80,7 @@ int var_count(P&s) {
 }
 
 inline
-double var_ratio(P&s) {
+double var_ratio(const P& s) {
   const int n = s.size();
   int m = 0;
   rep (i, n) if (s[i].is_var) ++m;
@@ -87,7 +88,7 @@ double var_ratio(P&s) {
 }
 
 inline
-bool is_good(P&s) {
+bool is_good(const P& s) {
   if (gm == VAR_COUNT) {
     const int n = var_count(s);
     return (c_sub <= n) and (n < c_sup);
@@ -99,55 +100,97 @@ bool is_good(P&s) {
 }
 
 /* non-erasing generalization system <= */
-bool preceq(vector<string> s, P sigma) {
-  const int n = s.size(),
-        m = sigma.size();
-  vector<vector<bool>> M(n, vector<bool>(m, false));
-  rep (i, n) {
-    rep (j, m) {
-      if (i == 0 and j == 0) {
-        M[0][0] = sigma[0].is_var or (sigma[0].str == s[0]);
-        if (not M[0][0]) return false;
-      }
-      else if (i == 0) {
-        M[0][j] = false;
-      }
-      else if (j == 0) {
-        M[i][0] = M[i-1][0] and sigma[0].is_var;
-      }
-      else {
-        M[i][j] =
-          (M[i-1][j-1] and (sigma[j].is_var or (sigma[j].str == s[i])))
-          or
-          (M[i][j] = M[i-1][j] and sigma[j].is_var);
-      }
-    }
-  }
-  return M[n-1][m-1];
+
+bool preceq(const string& word, const RP& u) {
+  if (u.is_var) return true;
+  return word == u.str;
 }
 
-bool language_include(P&p, vector<vector<string>>&S) {
+bool preceq(const Text& s, const P& p) {
+  int n = s.size();
+  int m = p.size();
+  if (n < m) return false;
+
+  // tail matching
+  while (m > 0 and not p[m-1].is_var) {
+    if (preceq(s[n-1], p[m-1])) {
+      --n; --m;
+    } else {
+      return false;
+    }
+  }
+  if (n == 0 and m == 0) return true;
+  if (m == 0) return false;
+
+  // p should be "<>[.<>]*<>" or "[.<>]*<>"
+
+  int __pos = 0; // of text
+  int __begin = 0; // of pattern
+
+  // head matching
+  while (not p[__begin].is_var) {
+    if (preceq(s[__pos], p[__begin])) {
+      ++__pos; ++__begin;
+    } else {
+      return false;
+    }
+    if (__pos >= n) return false;
+  }
+
+  // p should be "<>[.<>]*<>"
+  
+  int __end;
+  for (int i = p.size();i > 0; --i) {
+    while (__begin < m and p[__begin].is_var) {
+      ++__pos; ++__begin;
+    }
+    if (__begin >= m and __pos <= n) return true;
+    if (__pos >= n) return false;
+
+    for (__end = __begin + 1; __end < m; ++__end)
+      if (p[__end].is_var) break;
+
+    for (; __pos < n - (__end - __begin); ++__pos) {
+      bool res = true;
+      for (int i = 0; i < __end - __begin; ++i) {
+        if (not preceq(s[__pos + i], p[__begin + i])) {
+          res = false;
+          break;
+        }
+      }
+      if (res) {
+        __pos += (__end - __begin);
+        __begin = __end;
+        break;
+      }
+    }
+    if (__pos >= n - (__end - __begin)) return false;
+  }
+  return false;
+}
+
+bool language_include(const P& p, const vector<Text>& S) {
   for (auto&s: S)
     if (not preceq(s, p)) return false;
   return true;
 }
 
-vector<vector<string>> docs;
+vector<Text> docs;
 
-bool language_include(P&p, vi c) {
+bool language_include(const P& p, const vi& c) {
   for (int i: c)
     if (not preceq(docs[i], p)) return false;
   return true;
 }
 
-vi partial_covering(P p, vi c) {
+vi partial_covering(const P& p, const vi& c) {
   vi r;
   for (int i: c)
     if (preceq(docs[i], p)) r.push_back(i);
   return r;
 }
 
-set<string> collect(P p, vi c) {
+set<string> collect(const P& p, const vi& c) {
   const int n = p.size();
   set<string> s;
   for (int idx: c) {
@@ -178,33 +221,44 @@ set<string> collect(P p, vi c) {
 
 // takes: one pattern and its covering
 // returns: one pattern extended
-P tighten(P&p, vi&c)
+P tighten(const P&p, const vi& c)
 {
   const int n = p.size();
+  assert((n < 300) && "What the fuck long sentence!");
 
-  rep (i, n) {
-    if (p[i].is_var) {
-      P r;
-      for (int j = 0; j < i; ++j) r.push_back(p[j]);
-      r.push_back(RP());
-      for (int j = i; j < n; ++j) r.push_back(p[j]);
-      if (language_include(r, c)) {
-        return tighten(r, c);
+  // <> -> <> <>
+  {
+    P r(n+1);
+    rep (i, n) {
+      r[i] = p[i];
+      if (p[i].is_var and (i == 0 or (not p[i-1].is_var))) {
+        r[i+1] = RP();
+        for (int j = i+1; j < n; ++j) r[j+1] = p[j];
+        if (language_include(r, c)) {
+          return tighten(r, c);
+        }
       }
     }
   }
-  set<string> alphabets = collect(p, c);
-  for (auto&s: alphabets) {
-    for (int i = 0; i < n; ++i) {
-      if (not p[i].is_var) continue;
-      p[i].is_var = false;
-      p[i].str = s;
-      if (language_include(p, c)) {
-        return tighten(p, c);
+
+  // <> -> a
+  {
+    P q = p;
+    set<string> alphabets = collect(p, c);
+    for (auto&s: alphabets) {
+      for (int i = 0; i < n; ++i) {
+        if (not p[i].is_var) continue;
+        q[i].is_var = false;
+        q[i].str = s;
+        if (language_include(q, c)) {
+          return tighten(q, c);
+        }
+        q[i].is_var = true;
       }
-      p[i].is_var = true;
     }
   }
+
+  // else
   return p;
 }
 
@@ -373,6 +427,7 @@ vector<P> kmmg(vector<vector<string>>&_docs)
         if (cover_count[i] == 1) S.push_back(i);
         else --cover_count[i];
       }
+      if (S.size() == 0) continue;
       pc_next = make_pair( tighten(pc_next.first, S), S);
       pcs.push(pc_next);
     }

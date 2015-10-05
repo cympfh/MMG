@@ -1,7 +1,5 @@
 #include "./mmg.cc"
 
-bool SILENT = false;
-
 double str2double(string s) {
   stringstream a(s);
   double r; a >> r;

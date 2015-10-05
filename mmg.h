@@ -8,3 +8,4 @@ double rho_sup = 0.8;
 int c_sub = 1;
 int c_sup = 4;
 int K = -1;
+bool SILENT = false;
