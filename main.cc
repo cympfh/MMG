@@ -14,25 +14,37 @@ int str2int(string s) {
 
 int main(int argc, char*argv[])
 {
+
+  goto begin;
+
+help:
+      cerr << "Usage: ./mmg.exe [ -K <int> ] [ -c -sub <int> -sup <int> ] [ -r -sub <double> -sup <double> ]" << endl;
+      cerr << "-K k                  run k-mmg (assert k > 0)" << endl;
+      cerr << "-c -sub c0 -sup c1    outputs all patterns when containing n var and (c0 <= n < c1) (assert c0 < c1)" << endl;
+      cerr << "-r -sub r0 -sup r1    outputs all patterns when its var-ratio is r and (r0 <= r < r1) (assert r0 < r1)" << endl;
+      return 0;
+
+begin:
+
   // parse args
   for (int i = 1; i < argc; ++i) {
-    string s = string(argv[i]);
-    if (s == "-c") {
+    string arg = string(argv[i]);
+    if (arg == "-c") {
       gm = VAR_COUNT;
-    } else if (s == "-r") {
+    } else if (arg == "-r") {
       gm = VAR_RATIO;
-    } else if (s == "-k") {
+    } else if (arg == "-k" or arg == "-K") {
       gm = K_MULTIPLE;
       ++i;
       K = str2int(string(argv[i]));
-    } else if (s == "-sub") {
+    } else if (arg == "-sub") {
       ++i;
       if (gm == VAR_COUNT) {
         c_sub = str2int(string(argv[i]));
       } else {
         rho_sub = str2double(string(argv[i]));
       }
-    } else if (s == "-sup") {
+    } else if (arg == "-sup") {
       ++i;
       if (gm == VAR_COUNT) {
         c_sup = str2int(string(argv[i]));
@@ -40,49 +52,39 @@ int main(int argc, char*argv[])
         rho_sup = str2double(string(argv[i]));
       }
     } else {
-      cerr << "[error] unknown option: " << s << endl;
-      return 1;
+      goto help;
     }
   }
 
-  { // parameter check
+  { // parameter assertion
     switch (gm) {
     case VAR_RATIO:
-      if (rho_sub >= rho_sup) {
-        cerr << "[error] rho_minus < rho_plus" << endl;
-        return 1;
-      }
+      if (rho_sub >= rho_sup) { goto help; }
       break;
     case VAR_COUNT:
-      if (c_sub >= c_sup) {
-        cerr << "[error] rho_minus < rho_plus" << endl;
-        return 1;
-      }
+      if (c_sub >= c_sup) { goto help; }
       break;
     case K_MULTIPLE:
-      if (K < 1) {
-        cerr << "[error] K must be int larger then 0" << endl;
-        return 1;
-      }
+      if (K < 1) { goto help; }
       break;
     default:
-      cerr << "[error] program error" << endl;
-      return 1;
+      goto help;
     }
   }
+
   { // debug print
     cerr << "# parameteres" << endl;
     switch (gm) {
     case VAR_COUNT:
-      cerr << "is_good by the var count" << endl;
-      cerr << "[sub, sup) = " << c_sub << ", " << c_sup << endl;
+      cerr << "  is_good by the var count" << endl;
+      cerr << "  [sub, sup) = " << c_sub << ", " << c_sup << endl;
       break;
     case VAR_RATIO:
-      cerr << "is_good by the var ratio" << endl;
-      cerr << "[sub, sup) = " << rho_sub << ", " << rho_sup << endl;
+      cerr << "  is_good by the var ratio" << endl;
+      cerr << "  [sub, sup) = " << rho_sub << ", " << rho_sup << endl;
       break;
     case K_MULTIPLE:
-      cerr << K << "-multiple" << endl;
+      cerr << "  " << K << "-multiple" << endl;
     }
   }
 
