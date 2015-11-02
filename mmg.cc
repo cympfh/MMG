@@ -1,42 +1,15 @@
 #include <bits/stdc++.h>
+#include "./util.cc"
 #include "./mmg.h"
-
+#include "./setcover.hh"
 using namespace std;
+
 using vi = vector<int>;
+using Integer = mpz_class;
 
 #define rep(i,n) for(int i=0;i<(n);++i)
 #define loop for(;;)
 #define trace(var) cerr<<">>> "<<#var<<" = "<<var<<endl;
-
-template<class T>
-ostream& operator<<(ostream& os, vector<T> v) {
-  if (v.size() == 0) {
-    os << "(empty vector)";
-    return os;
-  }
-  os << v[0];
-  for (int i = 1, len = v.size(); i < len; ++i) {
-    os << " " << v[i];
-  }
-  return os;
-}
-
-template<class S, class T>
-ostream& operator<<(ostream& os, pair<S,T> p) {
-  os << '(' << p.first << ", " << p.second << ')';
-  return os;
-}
-
-vector<string> as_words(string s) {
-  stringstream sin(s);
-  vector<string> words;
-  for (;;) {
-    string s; sin >> s;
-    if (!sin) break;
-    words.push_back(s);
-  }
-  return words;
-}
 
 struct RP
 {
@@ -55,7 +28,7 @@ struct RP
   }
 };
 
-using P = vector<RP>;
+using Pattern = vector<RP>;
 using Text = vector<string>;
 
 bool operator<(RP a, RP b) {
@@ -71,42 +44,14 @@ ostream& operator<<(ostream& os, RP r) {
   return os;
 }
 
-inline
-int var_count(const P& s) {
-  const int n = s.size();
-  int m = 0;
-  rep (i, n) if (s[i].is_var) ++m;
-  return m;
-}
-
-inline
-double var_ratio(const P& s) {
-  const int n = s.size();
-  int m = 0;
-  rep (i, n) if (s[i].is_var) ++m;
-  return double(m) / double(n);
-}
-
-inline
-bool is_good(const P& s) {
-  if (gm == VAR_COUNT) {
-    const int n = var_count(s);
-    return (c_sub <= n) and (n < c_sup);
-  } else if (gm == VAR_RATIO) {
-    const double r = var_ratio(s);
-    return (rho_sub <= r) and (r < rho_sup);
-  }
-  return false;
-}
-
-/* non-erasing generalization system <= */
+// {{{ non-erasing generalization system <=
 
 bool preceq(const string& word, const RP& u) {
   if (u.is_var) return true;
   return word == u.str;
 }
 
-bool preceq(const Text& s, const P& p) {
+bool preceq(const Text& s, const Pattern& p) {
   int n = s.size();
   int m = p.size();
   if (n < m) return false;
@@ -168,8 +113,9 @@ bool preceq(const Text& s, const P& p) {
   }
   return false;
 }
+// }}}
 
-bool language_include(const P& p, const vector<Text>& S) {
+bool language_include(const Pattern& p, const vector<Text>& S) {
   for (auto&s: S)
     if (not preceq(s, p)) return false;
   return true;
@@ -177,20 +123,20 @@ bool language_include(const P& p, const vector<Text>& S) {
 
 vector<Text> docs;
 
-bool language_include(const P& p, const vi& c) {
+bool language_include(const Pattern& p, const vi& c) {
   for (int i: c)
     if (not preceq(docs[i], p)) return false;
   return true;
 }
 
-vi partial_covering(const P& p, const vi& c) {
-  vi r;
+set<int> coverset(Pattern&p, const vi&c) {
+  set<int> s;
   for (int i: c)
-    if (preceq(docs[i], p)) r.push_back(i);
-  return r;
+    if (preceq(docs[i], p)) s.insert(i);
+  return s;
 }
 
-set<string> collect(const P& p, const vi& c) {
+set<string> collect(const Pattern& p, const vi& c) {
   const int n = p.size();
   set<string> s;
   for (int idx: c) {
@@ -219,16 +165,35 @@ set<string> collect(const P& p, const vi& c) {
   return s;
 }
 
+int uplength(set<int>& c) {
+  int r = 0;
+  for (int i: c) r = max<int>(r, docs[i].size());
+  return r;
+}
+
+inline int var_count(const Pattern& p) {
+  int m = 0; for (auto&u: p) { if (u.is_var) ++m; }
+  return m;
+}
+
+// log (size^uplen)
+Integer language_size(const Pattern&p, int uplen=30) {
+  int n = p.size();
+  int m = var_count(p);
+  if (m == 0) return 0;
+  return max(0, uplen - n + m);
+}
+
 // takes: one pattern and its covering
 // returns: one pattern extended
-P tighten(const P&p, const vi& c)
+Pattern tighten(const Pattern&p, const vi& c)
 {
   const int n = p.size();
   assert((n < 300) && "What the fuck long sentence!");
 
   // <> -> <> <>
   {
-    P r(n+1);
+    Pattern r(n+1);
     rep (i, n) {
       r[i] = p[i];
       if (p[i].is_var and (i == 0 or (not p[i-1].is_var))) {
@@ -243,7 +208,7 @@ P tighten(const P&p, const vi& c)
 
   // <> -> a
   {
-    P q = p;
+    Pattern q = p;
     set<string> alphabets = collect(p, c);
     for (auto&s: alphabets) {
       for (int i = 0; i < n; ++i) {
@@ -262,94 +227,114 @@ P tighten(const P&p, const vi& c)
   return p;
 }
 
-vector<pair<P, vi>> division(P p, vi c) {
+vector<pair<Pattern, set<int>>> cspc(Pattern p, const vi& c) {
   const int n = p.size();
   const int M = c.size();
   set<string> alphabets = collect(p, c);
 
-  vector<pair<P, vi>> cspc; 
+  vector<pair<Pattern, set<int>>> ret; 
+
   // <> -> a
-  for (auto&s: alphabets) {
+  for (auto&a: alphabets) {
     rep (i, n) {
       if (not p[i].is_var) continue;
       p[i].is_var = false;
-      p[i].str = s;
-      auto pc = partial_covering(p, c);
-
-      if ((pc.size() > 0) and (pc.size() < M)) {
-        cspc.push_back(make_pair(p, pc));
+      p[i].str = a;
+      auto s = coverset(p, c);
+      if (s.size() > 0) {
+        assert(s.size() < c.size() && "<> -> a");
+        ret.push_back({ p, s });
       }
       p[i].is_var = true;
     }
   }
-  for (auto&s: alphabets) {
+
+  for (auto&a: alphabets) {
     rep(i, n) {
       if (not p[i].is_var) continue;
-      P q;
+      Pattern q;
 
       // <> -> <> a
       for (int k = 0; k < i; ++k) q.push_back(p[k]);
       q.push_back(RP()); // q[i]
-      q.push_back(RP(s)); // q[i+1]
+      q.push_back(RP(a)); // q[i+1]
       for (int k = i + 1; k < n; ++k) q.push_back(p[k]);
       {
-        auto pc = partial_covering(q, c);
-        if ((pc.size() > 0) and (pc.size() < M)) {
-          cspc.push_back(make_pair(q, pc));
+        auto s = coverset(q, c);
+        if (s.size() > 0) {
+          assert(s.size() < c.size() && "<> -> <> a");
+          ret.push_back({ p, s });
         }
       }
 
       // <> -> a <>
-      q[i] = RP(s);
+      q[i] = RP(a);
       q[i+1] = RP();
       {
-        auto pc = partial_covering(q, c);
-        if ((pc.size() > 0) and (pc.size() < M)) {
-          cspc.push_back(make_pair(q, pc));
-        }
-      }
-
-      // <> -> <> <>
-      q[i] = RP();
-      {
-        auto pc = partial_covering(q, c);
-        if ((pc.size() > 0) and (pc.size() < M)) {
-          cspc.push_back(make_pair(q, pc));
+        auto s = coverset(q, c);
+        if (s.size() > 0) {
+          assert(s.size() < c.size() && "<> -> a <>");
+          ret.push_back({ p, s });
         }
       }
     }
   }
 
-  // 最小被覆としたいところだが、NP-hard である
-  // 被覆が大きいのからあれしてこう
-  sort(cspc.begin(), cspc.end(), 
-      [](pair<P, vi> x,
-         pair<P, vi> y) {
-          return x.second.size() > y.second.size(); });
-
-  vector<pair<P, vi>> ret;
-  set<int> m;
-  for (auto&pc: cspc) {
-    // 被覆してない部分がある?
-    bool bl = false;
-    for (int i: pc.second) {
-      if (m.count(i) == 0) {
-        bl = true;
-        break;
+  { // <> -> <> <>
+    Pattern q(n+1);
+    rep (i, n) {
+      q[i] = p[i];
+      if (p[i].is_var and (i == 0 or (not p[i-1].is_var))) {
+        q[i+1] = RP();
+        for (int j = i+1; j < n; ++j) q[j+1] = p[j];
+        auto s = coverset(q, c);
+        if (s.size() > 0) {
+          assert(s.size() < c.size() && "<> -> a <>");
+          ret.push_back({ p, s });
+        }
       }
     }
-    if (bl) {
-      ret.push_back(pc);
-      for (int i: pc.second) m.insert(i);
-    }
+  }
+
+  // tighten all patterns
+  rep (i, ret.size()) {
+    auto p = tighten(ret[i].first, set_to_vi(ret[i].second));
+    ret[i].first = p;
   }
 
   return ret;
 }
 
+// 重みを附けるかのフラグ附
+vector<pair<Pattern, vi>>
+division(vector<pair<Pattern, set<int>>> & ps, const vi& c, bool weighted=true)
+{
+  vector<pair<Pattern, vi>> ret;
+  if (ps.size() == 0) return ret;
+
+  // 集合被覆を解く
+  vector<pair<set<int>, Integer>> ls(ps.size());
+  rep (i, ps.size()) {
+    Integer w = language_size(ps[i].first, uplength(ps[i].second));
+    ls[i] = { ps[i].second, w };
+  }
+
+  set<int> sol;
+  if (weighted) {
+    sol = setcover(ls);
+  } else {
+    sol = unweighted_setcover(ls);
+  }
+
+  vector<pair<Pattern, vi>> div;
+  for (auto id: sol) div.push_back({ ps[id].first, set_to_vi(ps[id].second) });
+
+  return div;
+}
+
 // <> <>* -> <>
-P var_simplify(P&s) {
-  P r;
+Pattern var_simplify(Pattern&s) {
+  Pattern r;
   bool b = false;
   for (auto&u: s) {
     if (u.is_var) {
@@ -367,30 +352,30 @@ P var_simplify(P&s) {
   return r;
 }
 
-vector<P> kmmg(vector<vector<string>>&_docs)
+vector<Pattern> kmmg(vector<vector<string>>&_docs)
 {
   docs = _docs;
   const int n = docs.size();
 
   vi ids(n); rep(i, n) ids[i] = i;
 
-  P top { RP() };
+  Pattern top { RP() };
   auto pc = tighten(top, ids);
 
   // いくつのパターンに被覆されているか
   vi cover_count(n, 1);
 
   // collection of (pattern::vector<RP>, covering::vector<int>)
-  queue<pair<P, vi>> pcs;
+  queue<pair<Pattern, vi>> pcs;
   pcs.push(make_pair(pc, ids));
-  vector<P> ret;
+  vector<Pattern> ret;
 
   /* division */
   while (not pcs.empty()) {
     auto pc = pcs.front(); pcs.pop();
-    if (gm != K_MULTIPLE) {
-      auto p = var_simplify(pc.first);
-      if (is_good(p)) ret.push_back(p);
+
+    if (DEBUG) {
+      cerr << "#div: " << pc.first << endl;
     }
 
     // S = Doc \ L( Pi \ p)
@@ -401,26 +386,65 @@ vector<P> kmmg(vector<vector<string>>&_docs)
     }
     if (S.size() == 0) continue;
 
-    auto pcs_next = division(pc.first, S);
-    if (pcs_next.size() < 2) { // not divisible
-      if (gm == K_MULTIPLE) ret.push_back(pc.first);
+    // not divisible clearly
+    if (var_count(pc.first) == 0) {
+      ret.push_back(pc.first);
+      if (DEBUG) { cerr << "clearly not-divisible " << pc.first << endl; }
       continue;
     }
-    if (gm == K_MULTIPLE) {
-      if (ret.size() + pcs.size() + pcs_next.size() > K) {
-        ret.push_back(pc.first);
-        while (not pcs.empty()) {
-          ret.push_back(pcs.front().first);
-          pcs.pop();
-        }
-        return ret;
+
+    auto ps = cspc(pc.first, S);
+    if (DEBUG) {
+      cerr << "cspc: " << ps.size() << endl;
+    }
+    auto qs = division(ps, S, true); // weighted
+    if (DEBUG) {
+      cerr << "weighted-cover: " << qs.size() << endl;
+    }
+    if ((qs.size() == 0) or (gm == K_MULTIPLE and (ret.size() + pcs.size() + qs.size() > K))) {
+      qs = division(ps, S, false); // unweighted
+      if (DEBUG) {
+        cerr << "unweighted-cover: " << qs.size() << endl;
       }
     }
 
-    for (auto&pc_next: pcs_next) {
+    // when not divisible
+    if (qs.size() == 0) {
+      ret.push_back(pc.first);
+      continue;
+    }
+
+    if (gm == K_MULTIPLE and (ret.size() + pcs.size() + qs.size() > K)) {
+      ret.push_back(pc.first);
+      while (not pcs.empty()) {
+        ret.push_back(pcs.front().first);
+        pcs.pop();
+      }
+      return ret;
+    }
+
+    if (DEBUG) {
+      cerr << "#  " << pc.first << endl;
+      rep (i, qs.size()) {
+        cerr << "-> " << qs[i].first << endl;
+      }
+    }
+
+    // if (gm == GAIN_LIMIT)
+    {
+      Integer g = language_size(pc.first);
+      Integer g2 = 0;
+      rep (i, qs.size()) {
+        g2 += language_size(qs[i].first);
+      }
+      cerr << "# " << pc.first << " " << g << " -> " << g2 << endl;
+    }
+
+    for (auto&pc_next: qs) {
       for (int i: pc_next.second) ++cover_count[i];
     }
-    for (auto&pc_next: pcs_next) {
+
+    for (auto&pc_next: qs) {
       // Doc - (Pi - pc_next)
       vi S;
       for (int i: pc_next.second) {
