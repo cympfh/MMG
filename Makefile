@@ -1,4 +1,4 @@
-all: mmg.exe mmg.debug.exe
+all: mmg mmg.debug.exe
 
 test:
 	./mmg.exe -D -K 3 < sample/data
@@ -6,7 +6,7 @@ test:
 mmg.debug.exe: main.cc mmg.cc setcover.o
 	g++ --std=c++11 -g -o $@ setcover.o main.cc -lgmp -lgmpxx
 
-mmg.exe: main.cc mmg.h mmg.cc setcover.o
+mmg: main.cc mmg.h mmg.cc setcover.o
 	g++ --std=c++11 -O3 -o $@ setcover.o main.cc -lgmp -lgmpxx
 
 setcover.o: setcover.cc

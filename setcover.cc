@@ -1,9 +1,10 @@
 #include <bits/stdc++.h>
 #include <gmpxx.h>
 using namespace std;
-using Integer = mpz_class;
 #define rep(i,n) for(int i=0;i<(n);++i)
 
+/*
+using Integer = mpz_class;
 int log(int tei, int n) {
   if (n < 1) return 0;
   if (n < tei) return 1;
@@ -15,13 +16,14 @@ int log(int tei, Integer n) {
   if (n < tei) return 1;
   return 1 + log(tei, n / tei);
 }
+*/
 
 bool subset(const set<int>&a, const set<int>&b) {
   for (int x: a) if (not b.count(x)) return false;
   return true;
 }
 
-set<int> setcover(vector<pair<set<int>, Integer>> ls) {
+set<int> setcover(vector<pair<set<int>, int>> ls) {
   auto bk = ls;
   const int N = ls.size();
   set<int> ret;
@@ -31,15 +33,14 @@ set<int> setcover(vector<pair<set<int>, Integer>> ls) {
       uncovered.insert(x);
     }
   }
-  int tei = 4;
   while (uncovered.size() > 0) {
     int k = -1;
-    int mr;
+    double mr = 1e10;
     rep (i, N) {
       int s = ls[i].first.size();
       if (s == 0) continue;
-      int r = log(tei, s) - log(tei, ls[i].second);
-      if (k < 0 or mr < r) { // maximize
+      double r = double(ls[i].second) / double(s);
+      if (k < 0 or mr > r) { // minimize
         k = i;
         mr = r;
       }
@@ -62,7 +63,7 @@ set<int> setcover(vector<pair<set<int>, Integer>> ls) {
   return ret;
 }
 
-set<int> unweighted_setcover(vector<pair<set<int>, Integer>> ls) {
+set<int> unweighted_setcover(vector<pair<set<int>, int>> ls) {
   auto bk = ls;
   const int N = ls.size();
   set<int> ret;

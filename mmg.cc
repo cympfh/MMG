@@ -5,7 +5,7 @@
 using namespace std;
 
 using vi = vector<int>;
-using Integer = mpz_class;
+// using Integer = mpz_class;
 
 #define rep(i,n) for(int i=0;i<(n);++i)
 #define loop for(;;)
@@ -176,8 +176,10 @@ inline int var_count(const Pattern& p) {
   return m;
 }
 
-// log (size^uplen)
-Integer language_size(const Pattern&p, int uplen=30) {
+inline bool is_text(const Pattern& p) { return var_count(p) == 0; }
+
+// log of
+int language_size(const Pattern&p, int uplen=30) {
   int n = p.size();
   int m = var_count(p);
   if (m == 0) return 0;
@@ -263,18 +265,7 @@ vector<pair<Pattern, set<int>>> cspc(Pattern p, const vi& c) {
         auto s = coverset(q, c);
         if (s.size() > 0) {
           assert(s.size() < c.size() && "<> -> <> a");
-          ret.push_back({ p, s });
-        }
-      }
-
-      // <> -> a <>
-      q[i] = RP(a);
-      q[i+1] = RP();
-      {
-        auto s = coverset(q, c);
-        if (s.size() > 0) {
-          assert(s.size() < c.size() && "<> -> a <>");
-          ret.push_back({ p, s });
+          ret.push_back({ q, s });
         }
       }
     }
@@ -313,9 +304,10 @@ division(vector<pair<Pattern, set<int>>> & ps, const vi& c, bool weighted=true)
   if (ps.size() == 0) return ret;
 
   // 集合被覆を解く
-  vector<pair<set<int>, Integer>> ls(ps.size());
+  vector<pair<set<int>, int>> ls(ps.size());
   rep (i, ps.size()) {
-    Integer w = language_size(ps[i].first, uplength(ps[i].second));
+    int w; // language_size(ps[i].first, uplength(ps[i].second));
+    if (is_text(ps[i].first)) w = 2; else w = 3;
     ls[i] = { ps[i].second, w };
   }
 
@@ -365,62 +357,70 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
   // いくつのパターンに被覆されているか
   vi cover_count(n, 1);
 
-  // collection of (pattern::vector<RP>, covering::vector<int>)
-  queue<pair<Pattern, vi>> pcs;
-  pcs.push(make_pair(pc, ids));
+  // (priority, Pattern, cover)
+  priority_queue<pair<int, pair<Pattern, vi>>> pcs;
+  pcs.push({ 1, { pc, ids }});
   vector<Pattern> ret;
 
   /* division */
-  while (not pcs.empty()) {
-    auto pc = pcs.front(); pcs.pop();
+  while (not pcs.empty())
+  {
+    auto pc   = pcs.top(); pcs.pop();
+    Pattern p = pc.second.first;
+    vi& c     = pc.second.second;
 
-    if (DEBUG) {
-      cerr << "#div: " << pc.first << endl;
-    }
-
-    // S = Doc \ L( Pi \ p)
-    vi S;
-    for (int i: pc.second) {
+    vi S; // S = Doc - L( Pi - p)
+    for (int i: c) {
       if (cover_count[i] == 1) S.push_back(i);
       --cover_count[i];
     }
+    trace(make_pair(p, S));
     if (S.size() == 0) continue;
 
-    // not divisible clearly
-    if (var_count(pc.first) == 0) {
-      ret.push_back(pc.first);
-      if (DEBUG) { cerr << "clearly not-divisible " << pc.first << endl; }
+    if (is_text(p)) { // not divisible clearly
+      if (DEBUG) { cerr << "clearly not-divisible " << p << endl; }
+      ret.push_back(p);
       continue;
     }
 
-    auto ps = cspc(pc.first, S);
+    auto ps = cspc(p, S);
     if (DEBUG) {
-      cerr << "cspc: " << ps.size() << endl;
+      cerr << "cspc:" << ps.size() << endl;
+      cerr << "{{{" << endl;
+      rep (i, min<int>(10, ps.size())) cerr << ps[i].first << " (" << ps[i].second << ')' << endl;
+      cerr << "}}}" << endl;
     }
     auto qs = division(ps, S, true); // weighted
     if (DEBUG) {
-      cerr << "weighted-cover: " << qs.size() << endl;
+      cerr << "weighted-cover:" << qs.size() << endl;
+      cerr << "{{{" << endl;
+      rep (i, min<int>(10, qs.size())) cerr << qs[i].first << " (" << qs[i].second << ')' << endl;
+      cerr << "}}}" << endl;
     }
     if ((qs.size() == 0) or (gm == K_MULTIPLE and (ret.size() + pcs.size() + qs.size() > K))) {
       qs = division(ps, S, false); // unweighted
       if (DEBUG) {
         cerr << "unweighted-cover: " << qs.size() << endl;
+        cerr << "{{{" << endl;
+        rep (i, min<int>(10, qs.size())) cerr << qs[i].first << " (" << qs[i].second << ')' << endl;
+        cerr << "}}}" << endl;
       }
     }
 
     // when not divisible
-    if (qs.size() == 0) {
-      ret.push_back(pc.first);
+    if (qs.size() < 2) {
+      if (DEBUG) { cerr << "# not divisible: " << p << endl; }
+      ret.push_back(p);
       continue;
     }
 
     if (gm == K_MULTIPLE and (ret.size() + pcs.size() + qs.size() > K)) {
-      ret.push_back(pc.first);
-      while (not pcs.empty()) {
-        ret.push_back(pcs.front().first);
-        pcs.pop();
+      if (DEBUG) {
+        cerr << "#pattern is over K=" << K << endl;
+        trace(ret.size()); trace(pcs.size()); trace(qs.size());
       }
-      return ret;
+      ret.push_back(p);
+      continue;
     }
 
     if (DEBUG) {
@@ -432,12 +432,12 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
 
     // if (gm == GAIN_LIMIT)
     {
-      Integer g = language_size(pc.first);
-      Integer g2 = 0;
+      int g0 = language_size(p);
+      int g1 = 0;
       rep (i, qs.size()) {
-        g2 += language_size(qs[i].first);
+        g1 = max(g1, language_size(qs[i].first));
       }
-      cerr << "# " << pc.first << " " << g << " -> " << g2 << endl;
+      cerr << "# " << p << " " << g1 << " -> " << g1 << endl;
     }
 
     for (auto&pc_next: qs) {
@@ -445,16 +445,16 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
     }
 
     for (auto&pc_next: qs) {
-      // Doc - (Pi - pc_next)
-      vi S;
+      vi S; // Doc - (Pi - pc_next)
       for (int i: pc_next.second) {
         if (cover_count[i] == 1) S.push_back(i);
         else --cover_count[i];
       }
       if (S.size() == 0) continue;
-      pc_next = make_pair( tighten(pc_next.first, S), S);
-      pcs.push(pc_next);
+      pc_next = { tighten(pc_next.first, S), S };
+      pcs.push({ S.size(), pc_next });
     }
+
   }
 
   return ret;
