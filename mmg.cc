@@ -374,8 +374,11 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
       if (cover_count[i] == 1) S.push_back(i);
       --cover_count[i];
     }
-    trace(make_pair(p, S));
     if (S.size() == 0) continue;
+
+    if (DEBUG) {
+      cerr << "# div of " << p << " (" << c << ')' << endl;
+    }
 
     if (is_text(p)) { // not divisible clearly
       if (DEBUG) { cerr << "clearly not-divisible " << p << endl; }
@@ -390,6 +393,7 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
       rep (i, min<int>(10, ps.size())) cerr << ps[i].first << " (" << ps[i].second << ')' << endl;
       cerr << "}}}" << endl;
     }
+
     auto qs = division(ps, S, true); // weighted
     if (DEBUG) {
       cerr << "weighted-cover:" << qs.size() << endl;
@@ -397,6 +401,7 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
       rep (i, min<int>(10, qs.size())) cerr << qs[i].first << " (" << qs[i].second << ')' << endl;
       cerr << "}}}" << endl;
     }
+
     if ((qs.size() == 0) or (gm == K_MULTIPLE and (ret.size() + pcs.size() + qs.size() > K))) {
       qs = division(ps, S, false); // unweighted
       if (DEBUG) {
@@ -431,13 +436,14 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
     }
 
     // if (gm == GAIN_LIMIT)
+    if (DEBUG)
     {
       int g0 = language_size(p);
       int g1 = 0;
       rep (i, qs.size()) {
         g1 = max(g1, language_size(qs[i].first));
       }
-      cerr << "# " << p << " " << g1 << " -> " << g1 << endl;
+      cerr << "# Language Size : " << g1 << " -> " << g1 << endl;
     }
 
     for (auto&pc_next: qs) {
