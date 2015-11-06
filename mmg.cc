@@ -136,7 +136,7 @@ set<int> coverset(Pattern&p, const vi&c) {
   return s;
 }
 
-set<string> collect(const Pattern& p, const vi& c) {
+vector<string> collect(const Pattern& p, const vi& c) {
   const int n = p.size();
   set<string> s;
   for (int idx: c) {
@@ -162,7 +162,10 @@ set<string> collect(const Pattern& p, const vi& c) {
     while (j < m)
       s.insert(words[j++]);
   }
-  return s;
+
+  vector<string> ret;
+  for (const string& w: s) ret.push_back(w);
+  return ret;
 }
 
 int uplength(set<int>& c) {
@@ -211,8 +214,8 @@ Pattern tighten(const Pattern&p, const vi& c)
   // <> -> a
   {
     Pattern q = p;
-    set<string> alphabets = collect(p, c);
-    for (auto&s: alphabets) {
+    auto alphabets = collect(p, c);
+    for (const string& s: alphabets) {
       for (int i = 0; i < n; ++i) {
         if (not p[i].is_var) continue;
         q[i].is_var = false;
@@ -232,12 +235,12 @@ Pattern tighten(const Pattern&p, const vi& c)
 vector<pair<Pattern, set<int>>> cspc(Pattern p, const vi& c) {
   const int n = p.size();
   const int M = c.size();
-  set<string> alphabets = collect(p, c);
+  auto alphabets = collect(p, c);
 
   vector<pair<Pattern, set<int>>> ret; 
 
   // <> -> a
-  for (auto&a: alphabets) {
+  for (const string& a: alphabets) {
     rep (i, n) {
       if (not p[i].is_var) continue;
       p[i].is_var = false;
@@ -251,7 +254,7 @@ vector<pair<Pattern, set<int>>> cspc(Pattern p, const vi& c) {
     }
   }
 
-  for (auto&a: alphabets) {
+  for (const string& a: alphabets) {
     rep(i, n) {
       if (not p[i].is_var) continue;
       Pattern q;
@@ -369,6 +372,12 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
     Pattern p = pc.second.first;
     vi& c     = pc.second.second;
 
+    if (DEBUG) {
+      cerr << endl;
+      cerr << "# div of " << p << " (" << c << ')' << endl;
+      trace(language_size(p));
+    }
+
     vi S; // S = Doc - L( Pi - p)
     for (int i: c) {
       if (cover_count[i] == 1) S.push_back(i);
@@ -376,28 +385,22 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
     }
     if (S.size() == 0) continue;
 
-    if (DEBUG) {
-      cerr << "# div of " << p << " (" << c << ')' << endl;
-    }
-
     if (is_text(p)) { // not divisible clearly
-      if (DEBUG) { cerr << "clearly not-divisible " << p << endl; }
+      if (DEBUG) { cerr << "  clearly not-divisible " << p << endl; }
       ret.push_back(p);
       continue;
     }
 
     auto ps = cspc(p, S);
     if (DEBUG) {
-      cerr << "cspc:" << ps.size() << endl;
-      cerr << "{{{" << endl;
-      rep (i, min<int>(10, ps.size())) cerr << ps[i].first << " (" << ps[i].second << ')' << endl;
+      cerr << "\n{{{ cspc: " << ps.size() << endl;
+      rep (i, min<int>(32, ps.size())) cerr << ps[i].first << " (" << ps[i].second << ')' << endl;
       cerr << "}}}" << endl;
     }
 
     auto qs = division(ps, S, true); // weighted
     if (DEBUG) {
-      cerr << "weighted-cover:" << qs.size() << endl;
-      cerr << "{{{" << endl;
+      cerr << "\n{{{ weighted: " << qs.size() << endl;
       rep (i, min<int>(10, qs.size())) cerr << qs[i].first << " (" << qs[i].second << ')' << endl;
       cerr << "}}}" << endl;
     }
@@ -405,8 +408,7 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
     if ((qs.size() == 0) or (gm == K_MULTIPLE and (ret.size() + pcs.size() + qs.size() > K))) {
       qs = division(ps, S, false); // unweighted
       if (DEBUG) {
-        cerr << "unweighted-cover: " << qs.size() << endl;
-        cerr << "{{{" << endl;
+        cerr << "\n{{{ unweighted: " << qs.size() << endl;
         rep (i, min<int>(10, qs.size())) cerr << qs[i].first << " (" << qs[i].second << ')' << endl;
         cerr << "}}}" << endl;
       }
@@ -414,7 +416,7 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
 
     // when not divisible
     if (qs.size() < 2) {
-      if (DEBUG) { cerr << "# not divisible: " << p << endl; }
+      if (DEBUG) { cerr << "  not divisible: " << p << endl; }
       ret.push_back(p);
       continue;
     }
@@ -428,22 +430,20 @@ vector<Pattern> kmmg(vector<vector<string>>&_docs)
       continue;
     }
 
-    if (DEBUG) {
-      cerr << "#  " << pc.first << endl;
-      rep (i, qs.size()) {
-        cerr << "-> " << qs[i].first << endl;
-      }
-    }
-
-    // if (gm == GAIN_LIMIT)
-    if (DEBUG)
+    if (gm == GAIN_LIMIT)
     {
       int g0 = language_size(p);
       int g1 = 0;
       rep (i, qs.size()) {
         g1 = max(g1, language_size(qs[i].first));
       }
-      cerr << "# Language Size : " << g1 << " -> " << g1 << endl;
+      if (DEBUG) {
+        cerr << "# Language Size : " << g0 << " -> " << g1 << endl;
+      }
+      if (g1 + limit < g0) {
+        ret.push_back(p);
+        continue;
+      }
     }
 
     for (auto&pc_next: qs) {
