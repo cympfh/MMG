@@ -136,9 +136,12 @@ set<int> coverset(Pattern&p, const vi&c) {
   return s;
 }
 
-vector<string> collect(const Pattern& p, const vi& c) {
+vector<string> collect(const Pattern& p, const vi& c)
+{
   const int n = p.size();
-  set<string> s;
+
+  vector<string> v;
+
   for (int idx: c) {
     vector<string>&words = docs[idx];
     const int m = words.size();
@@ -148,24 +151,23 @@ vector<string> collect(const Pattern& p, const vi& c) {
     for (; i < n && j < m;)
     {
       if (p[i].is_var) {
-        s.insert(words[j]);
+        v.push_back(words[j]);
         ++i; ++j;
       }
       else if (p[i].str == words[j]) {
         ++i; ++j;
       }
       else {
-        s.insert(words[j]);
+        v.push_back(words[j]);
         ++j;
       }
     }
-    while (j < m)
-      s.insert(words[j++]);
+    while (j < m) v.push_back(words[j++]);
   }
 
-  vector<string> ret;
-  for (const string& w: s) ret.push_back(w);
-  return ret;
+  sort(begin(v), end(v));
+  v.erase(std::unique(v.begin(), v.end()), v.end());
+  return v;
 }
 
 int uplength(set<int>& c) {
